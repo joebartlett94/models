@@ -52,13 +52,14 @@ tf.app.flags.DEFINE_string('subset', 'validation',
                            """Either 'validation' or 'train'.""")
 
 
-def _eval_once(saver, summary_writer, top_1_op, top_5_op, summary_op):
+def _eval_once(saver, summary_writer, top_1_op, top_2_op, top_5_op, summary_op):
   """Runs Eval once.
 
   Args:
     saver: Saver.
     summary_writer: Summary writer.
     top_1_op: Top 1 op.
+    top_2_op: Top 2 op.
     top_5_op: Top 5 op.
     summary_op: Summary op.
   """
@@ -94,6 +95,7 @@ def _eval_once(saver, summary_writer, top_1_op, top_5_op, summary_op):
       num_iter = int(math.ceil(FLAGS.num_examples / FLAGS.batch_size))
       # Counts the number of correct predictions.
       count_top_1 = 0.0
+      count_top_2 = 0.0
       count_top_5 = 0.0
       total_sample_count = num_iter * FLAGS.batch_size
       step = 0
@@ -101,8 +103,9 @@ def _eval_once(saver, summary_writer, top_1_op, top_5_op, summary_op):
       print('%s: starting evaluation on (%s).' % (datetime.now(), FLAGS.subset))
       start_time = time.time()
       while step < num_iter and not coord.should_stop():
-        top_1, top_5 = sess.run([top_1_op, top_5_op])
+        top_1, top_2, top_5 = sess.run([top_1_op, top_2_op, top_5_op])
         count_top_1 += np.sum(top_1)
+        count_top_2 += np.sum(top_2)
         count_top_5 += np.sum(top_5)
         step += 1
         if step % 20 == 0:
@@ -116,13 +119,15 @@ def _eval_once(saver, summary_writer, top_1_op, top_5_op, summary_op):
 
       # Compute precision @ 1.
       precision_at_1 = count_top_1 / total_sample_count
+      recall_at_2 = count_top_2 / total_sample_count
       recall_at_5 = count_top_5 / total_sample_count
-      print('%s: precision @ 1 = %.4f recall @ 5 = %.4f [%d examples]' %
-            (datetime.now(), precision_at_1, recall_at_5, total_sample_count))
+      print('%s: precision @ 1 = %.4f, recall @ 2 = %.4f recall @ 5 = %.4f [%d examples]' %
+            (datetime.now(), precision_at_1, recall_at_2, recall_at_5, total_sample_count))
 
       summary = tf.Summary()
       summary.ParseFromString(sess.run(summary_op))
       summary.value.add(tag='Precision @ 1', simple_value=precision_at_1)
+      summary.value.add(tag='Recall @ 2', simple_value=recall_at_2)
       summary.value.add(tag='Recall @ 5', simple_value=recall_at_5)
       summary_writer.add_summary(summary, global_step)
 
@@ -149,6 +154,7 @@ def evaluate(dataset):
 
     # Calculate predictions.
     top_1_op = tf.nn.in_top_k(logits, labels, 1)
+    top_2_op = tf.nn.in_top_k(logits, labels, 2)
     top_5_op = tf.nn.in_top_k(logits, labels, 5)
 
     # Restore the moving average version of the learned variables for eval.
@@ -165,7 +171,7 @@ def evaluate(dataset):
                                             graph_def=graph_def)
 
     while True:
-      _eval_once(saver, summary_writer, top_1_op, top_5_op, summary_op)
+      _eval_once(saver, summary_writer, top_1_op, top_2_op, top_5_op, summary_op)
       if FLAGS.run_once:
         break
       time.sleep(FLAGS.eval_interval_secs)
