@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Provides data for the flowers dataset.
-
-The dataset scripts used to create the dataset can be found at:
-tensorflow/models/slim/datasets/download_and_convert_flowers.py
-"""
+"""Provides data for the toplocs dataset."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -29,7 +25,7 @@ from datasets import dataset_utils
 
 slim = tf.contrib.slim
 
-_FILE_PATTERN = '%s_*'
+_FILE_PATTERN = '%s-*'
 
 SPLITS_TO_SIZES = {'train': 4741, 'validation': 1184}
 
@@ -42,7 +38,7 @@ _ITEMS_TO_DESCRIPTIONS = {
 
 
 def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
-  """Gets a dataset tuple with instructions for reading flowers.
+  """Gets a dataset tuple with instructions for reading toplocs.
 
   Args:
     split_name: A train/validation split name.
